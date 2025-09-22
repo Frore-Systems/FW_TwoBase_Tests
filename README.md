@@ -6,23 +6,23 @@ Folder structure:
 - README.md
 - requirements.txt
 - Frore_Comm/
-  - \__init__.py
+  - _ init _.py
   - DriveBoardInfo.py
   - frore_comm.py
   - frore_parse.py
   - frore_utils.py
 - tests/
   - application/
-    - \__init__.py
+    - _ init _.py
     - frore_const.json
     - test_driveboardmodes
-      ... 
+    - ... 
   - bootloader/
-    - \__init__.py
+    - _ init _.py
     - test_frore_comm.py
     - test_driveboardinfo.py
-      ...
-  - \__init__.py
+    -  ...
+  - _ init _.py
   - conftest.py
   - devices_setup.json
   - frore_config.json
@@ -31,15 +31,20 @@ Folder structure:
 **Frore_Comm** folder contains some modules (frore_comm.py, frore_utils.py, etc.) imported from Firmware-Twobase/test, that contains Frore Communication protocol and utilities used for 
 communicating to the drive board (Bayhill and/or future platform). These modules are modified in order to run the test scripts.  User needs to ensure that these modules are up to date
 before running the tests between versions.
+
 **tests** folder contains test scripts for the Firmware TwoBase
   - **bootloader** folder contains bootloader test scripts
   - **application** folder contains application test scripts
+
 Each test script can contain one or more tests
 
-conftest.py contains the test fixtures and utilities to run the tests
-devices_setup.json contains the peripherals such as power supply and driveboard information (e.g. HW & FW Version, FBN, COM Port, tc.)
-frore_config.json contains information about the registers of the firmware.
-frore_const.json contains contants information of the Flash, RAM, registers, etc.  Frore_Comm uses it to determine the memory address of the Flash, RAM, or register ids, etc.  This file
+**conftest.py** contains the test fixtures and utilities to run the tests
+
+**devices_setup.json** contains the peripherals such as power supply and driveboard information (e.g. HW & FW Version, FBN, COM Port, tc.)
+
+**frore_config.json** contains information about the registers of the firmware.
+
+**frore_const.json** contains contants information of the Flash, RAM, registers, etc.  Frore_Comm uses it to determine the memory address of the Flash, RAM, or register ids, etc.  This file
 contains a subset of the frore_const.json in the application folder.  This file is used for running the bootloader tests.  Application uses application/frore_const.json for application
 tests.
 
