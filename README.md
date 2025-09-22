@@ -6,23 +6,23 @@ Folder structure:
 - README.md
 - requirements.txt
 - Frore_Comm/
-  - __init__.py
+  - \__init__.py
   - DriveBoardInfo.py
   - frore_comm.py
   - frore_parse.py
   - frore_utils.py
 - tests/
   - application/
-    - __init__.py
+    - \__init__.py
     - frore_const.json
     - test_driveboardmodes
       ... 
   - bootloader/
-    - __init__.py
+    - \__init__.py
     - test_frore_comm.py
     - test_driveboardinfo.py
       ...
-  - __init__.py
+  - \__init__.py
   - conftest.py
   - devices_setup.json
   - frore_config.json
