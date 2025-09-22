@@ -55,6 +55,7 @@ RUN TESTS:
    - Bootloader: pytest -v -l .\bootloader
    - Application: pytest -v -l .\bootloader
    - All tests: pytest -v -l
+
 To generate html report for the test run, add "--html=<_reportfile.html_>" to the pytest command.  The _reportfile.html_ contains details report of the run.
 
 
