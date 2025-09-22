@@ -52,7 +52,7 @@ tests.
 -------------
 INSTALLATION:
 1. pip install -r requirements.txt
-2. Install libSQA package in the root folder
+2. Install [libSQA](https://github.com/Frore-Systems/libSQA) package in the root folder
 3. Update modules Frore_Comm folder with changes in the firmware.
 
 ------------
