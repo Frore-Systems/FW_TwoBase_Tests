@@ -1,0 +1,11 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+.vscode
+**/__pycache__/
+*.log
+*.csv
+FW_Tests.iml
+.idea
+report.html
+tests/report.html
