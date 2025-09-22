@@ -2,6 +2,7 @@ This repository contains all FW test scripts for the Frore - FW TwoBase, includi
 The FW_TwoBase_Tests requires Frore - libSQA package to control peripherals (such as power supply, heater, etc.).  
 
 Folder structure:
+
 Frore_Comm/
   - __init__.py
   - DriveBoardInfo.py
@@ -25,6 +26,7 @@ tests/
   - frore_config.json
   - frore_const.json
 README.md
+requirements.txt
 
 **Frore_Comm** folder contains some modules (frore_comm.py, frore_utils.py, etc.) imported from Firmware-Twobase/test, that contains Frore Communication protocol and utilities used for 
 communicating to the drive board (Bayhill and/or future platform). These modules are modified in order to run the test scripts.  User needs to ensure that these modules are up to date
