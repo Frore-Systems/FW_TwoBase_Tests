@@ -2,8 +2,9 @@ This repository contains all FW test scripts for the Frore - FW TwoBase, includi
 The FW_TwoBase_Tests requires Frore - libSQA package to control peripherals (such as power supply, heater, etc.).  
 
 Folder structure:
--README.md
--requirements.txt
+
+- README.md
+- requirements.txt
 
 Frore_Comm/
   - __init__.py
