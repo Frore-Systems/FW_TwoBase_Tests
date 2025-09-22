@@ -5,15 +5,13 @@ Folder structure:
 
 - README.md
 - requirements.txt
-
-Frore_Comm/
+- Frore_Comm/
   - __init__.py
   - DriveBoardInfo.py
   - frore_comm.py
   - frore_parse.py
   - frore_utils.py
-
-tests/
+- tests/
   - application/
     - __init__.py
     - frore_const.json
