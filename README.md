@@ -22,7 +22,7 @@ Folder structure:
     - test_frore_comm.py
     - test_driveboardinfo.py
       ...
-  - __init.py__
+  - __init__.py
   - conftest.py
   - devices_setup.json
   - frore_config.json
