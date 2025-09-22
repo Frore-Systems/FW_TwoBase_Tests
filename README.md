@@ -4,6 +4,7 @@ The FW_TwoBase_Tests requires Frore - libSQA package to control peripherals (suc
 Folder structure:
 
 README.md
+
 requirements.txt
 
 Frore_Comm/
