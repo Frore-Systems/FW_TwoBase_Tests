@@ -56,6 +56,28 @@
             "public": "true"
         },
         {
+            "name": "SupplyVoltage",
+            "description": "Supply voltage",
+            "type": "integer",
+            "unit": "mv",
+            "min": "5000",
+            "max": "50000",
+            "default": "5000",
+            "value": "5000",
+            "public": "true"
+        },
+        {
+            "name": "BootUpDelay",
+            "description": "Delay added for CSA Vref to charge up at boot up",
+            "type": "integer",
+            "unit": "ms",
+            "min": "0",
+            "max": "1000",
+            "default": "300",
+            "value": "0",
+            "public": "true"
+        },
+        {
             "name": "BoostStepSize",
             "description": "Boost voltage adjustment amount during boost set",
             "type": "integer",
@@ -85,7 +107,7 @@
             "min": "0",
             "max": "100",
             "default": "20",
-            "value": "40",
+            "value": "60",
             "public": "true"
         },
         {
@@ -107,7 +129,7 @@
             "min": "5000",
             "max": "50000",
             "default": "5000",
-            "value": "12000",
+            "value": "5000",
             "public": "true"
         },
         {
@@ -140,7 +162,7 @@
             "min": "100",
             "max": "5000",
             "default": "100",
-            "value": "100",
+            "value": "50",
             "public": "true"
         },
         {
@@ -397,6 +419,17 @@
             "public": "true"
         },
         {
+            "name": "VpztStepSize",
+            "description": "Vpzt step size",
+            "type": "integer",
+            "unit": "cv",
+            "min": "0",
+            "max": "100",
+            "default": "10",
+            "value": "10",
+            "public": "true"
+        },
+        {
             "name": "PowerTarget",
             "description": "Target Power (mW)",
             "type": "integer",
@@ -408,6 +441,17 @@
             "public": "true"
         },
         {
+            "name": "PowerAdjustFactor",
+            "description": "Target Adjustment Factor (pct)",
+            "type": "integer",
+            "unit": "pct",
+            "min": "1",
+            "max": "100",
+            "default": "100",
+            "value": "99",
+            "public": "true"
+        },
+        {
             "name": "PowerErrorThreshold",
             "description": "Power tracking error threshold",
             "type": "integer",
@@ -416,6 +460,17 @@
             "max": "200",
             "default": "50",
             "value": "50",
+            "public": "true"
+        },
+        {
+            "name": "AdjustedPowerThreshold",
+            "description": "Adjusted power threshold for frequency tracking decisions",
+            "type": "integer",
+            "unit": "mv",
+            "min": "0",
+            "max": "100",
+            "default": "10",
+            "value": "10",
             "public": "true"
         },
         {
@@ -447,6 +502,28 @@
             "unit": "",
             "min": "0",
             "max": "2",
+            "default": "0",
+            "value": "0",
+            "public": "true"
+        },
+        {
+            "name": "TrackInitRampDuration",
+            "description": "Initial ramp up duration for tracking option 2",
+            "type": "integer",
+            "unit": "frames",
+            "min": "1",
+            "max": "1000",
+            "default": "100",
+            "value": "100",
+            "public": "true"
+        },
+        {
+            "name": "TrackSilentPeriod",
+            "description": "The period during which frequency tracking is disabled",
+            "type": "integer",
+            "unit": "frames",
+            "min": "0",
+            "max": "1000",
             "default": "0",
             "value": "0",
             "public": "true"
@@ -518,51 +595,84 @@
             "public": "true"
         },
         {
-            "name": "TestDiagCsaBiasVoltage",
-            "description": "Nominal Bias Voltage used for HCSA/LCSA Diag Test",
+            "name": "TestDiagCsaBiasLow",
+            "description": "Lower limit for CSA bias measured in HCSA/LCSA Diag Test",
             "type": "integer",
             "unit": "mv",
             "min": "100",
             "max": "5000",
-            "default": "750",
-            "value": "1000",
+            "default": "1000",
+            "value": "990",
             "public": "true"
         },
         {
-            "name": "TestDiagCsaThreshold",
-            "description": "Threshold used for HCSA/LCSA Diag Test",
-            "type": "integer",
-            "unit": "mv",
-            "min": "100",
-            "max": "1000",
-            "default": "150",
-            "value": "200",
-            "public": "true"
-        },
-        {
-            "name": "TestDiagBoostOffThreshold",
-            "description": "Threshold (Boost Off Voltage) used for Boost Diag Test",
+            "name": "TestDiagCsaBiasHigh",
+            "description": "Upper limit for CSA bias measured in HCSA/LCSA Diag Test",
             "type": "integer",
             "unit": "mv",
             "min": "100",
             "max": "5000",
-            "default": "2500",
-            "value": "2500",
+            "default": "1000",
+            "value": "1210",
             "public": "true"
         },
         {
-            "name": "TestDiagBoostOnThreshold",
-            "description": "Threshold (Default Boost Voltage) used for Boost Diag Test",
+            "name": "TestDiagBoostBiasLow",
+            "description": "Lower limit for boost bias measured in Boost Diag Test",
             "type": "integer",
             "unit": "mv",
             "min": "100",
-            "max": "5000",
-            "default": "2500",
-            "value": "2500",
+            "max": "10000",
+            "default": "5000",
+            "value": "4500",
             "public": "true"
         },
         {
-            "name": "TestDiagOpenFrequency",
+            "name": "TestDiagBoostBiasHigh",
+            "description": "Upper limit for boost bias measured in Boost Diag Test",
+            "type": "integer",
+            "unit": "mv",
+            "min": "100",
+            "max": "10000",
+            "default": "5000",
+            "value": "5500",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagBoostVbst",
+            "description": "Boost used for Boost Diag Test",
+            "type": "integer",
+            "unit": "mv",
+            "min": "5000",
+            "max": "50000",
+            "default": "10000",
+            "value": "15000",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagBoostLow",
+            "description": "Lower limit for boost measured in Boost Diag Test",
+            "type": "integer",
+            "unit": "mv",
+            "min": "5000",
+            "max": "20000",
+            "default": "10000",
+            "value": "13500",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagBoostHigh",
+            "description": "Upper limit for boost measured in Boost Diag Test",
+            "type": "integer",
+            "unit": "mv",
+            "min": "5000",
+            "max": "20000",
+            "default": "10000",
+            "value": "16500",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagOpenFreq",
             "description": "PWM frequency used for Open Diag Test",
             "type": "integer",
             "unit": "Hz",
@@ -573,18 +683,18 @@
             "public": "true"
         },
         {
-            "name": "TestDiagOpenThreshold",
-            "description": "Threshold used for Open Diag Test",
+            "name": "TestDiagOpenCsaLow",
+            "description": "Lower limit for CSA measured in Open Diag Test",
             "type": "integer",
             "unit": "mv",
             "min": "10",
-            "max": "100",
+            "max": "1000",
             "default": "25",
             "value": "25",
             "public": "true"
         },
         {
-            "name": "TestDiagShortFrequency",
+            "name": "TestDiagShortFreq",
             "description": "PWM frequency used for Short Diag Test",
             "type": "integer",
             "unit": "Hz",
@@ -595,7 +705,7 @@
             "public": "true"
         },
         {
-            "name": "TestDiagShortBoost",
+            "name": "TestDiagShortVbst",
             "description": "Boost used for Short Diag Test",
             "type": "integer",
             "unit": "mv",
@@ -606,14 +716,47 @@
             "public": "true"
         },
         {
-            "name": "TestDiagShortThreshold",
-            "description": "Threshold used for Short Diag Test",
+            "name": "TestDiagShortAuto",
+            "description": "Limit for self VPZT measured in Short Diag Test",
             "type": "integer",
             "unit": "mv",
             "min": "10",
-            "max": "100",
-            "default": "25",
-            "value": "2000",
+            "max": "10000",
+            "default": "2000",
+            "value": "1500",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagShortCross",
+            "description": "Limit for adjacent VPZT measured in Short Diag Test",
+            "type": "integer",
+            "unit": "mv",
+            "min": "10",
+            "max": "10000",
+            "default": "4000",
+            "value": "750",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagVpztBiasLow",
+            "description": "Lower limit for Vpzt bias measured in VPZT Diag Test",
+            "type": "integer",
+            "unit": "cv",
+            "min": "0",
+            "max": "1000",
+            "default": "20",
+            "value": "0",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagVpztBiasHigh",
+            "description": "Upper limit for Vpzt bias measured in VPZT Diag Test",
+            "type": "integer",
+            "unit": "cv",
+            "min": "0",
+            "max": "1000",
+            "default": "80",
+            "value": "200",
             "public": "true"
         },
         {
@@ -623,8 +766,8 @@
             "unit": "Hz",
             "min": "20000",
             "max": "60000",
-            "default": "21500",
-            "value": "21500",
+            "default": "23000",
+            "value": "23000",
             "public": "true"
         },
         {
@@ -634,8 +777,8 @@
             "unit": "Hz",
             "min": "20000",
             "max": "60000",
-            "default": "24500",
-            "value": "24500",
+            "default": "25000",
+            "value": "25000",
             "public": "true"
         },
         {
@@ -645,24 +788,46 @@
             "unit": "Hz",
             "min": "100",
             "max": "10000",
-            "default": "500",
-            "value": "500",
+            "default": "1000",
+            "value": "1000",
             "public": "true"
         },
         {
-            "name": "TestDiagVpztThreshold",
-            "description": "Vpzt voltage threshold used for VPZT Diag Test",
+            "name": "TestDiagVpztVbst",
+            "description": "Boost used for VPZT Diag Test",
+            "type": "integer",
+            "unit": "mv",
+            "min": "5000",
+            "max": "50000",
+            "default": "10000",
+            "value": "15000",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagVpztLow",
+            "description": "Lower limit for Vpzt measured in VPZT Diag Test",
             "type": "integer",
             "unit": "cv",
-            "min": "100",
-            "max": "5000",
-            "default": "2500",
-            "value": "2500",
+            "min": "1000",
+            "max": "10000",
+            "default": "4000",
+            "value": "3000",
             "public": "true"
         },
         {
-            "name": "TestDiagThermLowThreshold",
-            "description": "Thermistor low threshold used for Therm Diag Test",
+            "name": "TestDiagVpztHigh",
+            "description": "Upper limit for Vpzt measured in VPZT Diag Test",
+            "type": "integer",
+            "unit": "cv",
+            "min": "1000",
+            "max": "10000",
+            "default": "6000",
+            "value": "9000",
+            "public": "true"
+        },
+        {
+            "name": "TestDiagThermLow",
+            "description": "Lower limit for thermistor measured in Therm Diag Test",
             "type": "integer",
             "unit": "cc",
             "min": "0",
@@ -672,8 +837,8 @@
             "public": "true"
         },
         {
-            "name": "TestDiagThermHighThreshold",
-            "description": "Thermistor high threshold used for Therm Diag Test",
+            "name": "TestDiagThermHigh",
+            "description": "Upper limit for thermistor measured in Therm Diag Test",
             "type": "integer",
             "unit": "cc",
             "min": "0",

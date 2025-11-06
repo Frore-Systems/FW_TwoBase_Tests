@@ -11,7 +11,6 @@
 #------------------------------------------------------------------------------
 
 import json, csv
-import struct
 from datetime import datetime
 from typing import Optional, Union
 from frore_comm import FroreComm
@@ -33,6 +32,10 @@ def reset_parse_count() -> None:
 def reset_buffer() -> None:
     global trail_buffer
     trail_buffer = []
+
+def reset_event_trail() -> None:
+    reset_parse_count()
+    reset_buffer()
 
 def get_message(buffer: list[int]) \
     -> Union[tuple[None, list[int]], tuple[list[int], list[int]]]:
@@ -145,11 +148,12 @@ def parse_message_mem(outfile: str, message: Optional[list[list[int]]]) -> None:
                 column += 1
     return
 
-def parse_message_json(dv: FroreComm, c: dict[str, int], outfile: str,
-    message: list[list[int]], num_bch: int, num_tch: int) -> None:
+def parse_message_json(dv: FroreComm, outfile: str, num_bch: int, num_tch: int,
+    message: list[list[int]]) -> None:
     """
     Parse one or more Event Trail messages in JSON format
     """
+    c = dv.const
     etp_inv = invert_dict(c, 'ETP_')
     evc_inv = invert_dict(c, 'EVC_')
     erc_inv = invert_dict(c, 'ERC_')
@@ -238,14 +242,13 @@ def parse_message_json(dv: FroreComm, c: dict[str, int], outfile: str,
 
     return
 
-def parse_message_csv(dv: FroreComm, c: dict[str, int], outfile: str,
-    message: list[list[int]], num_bch: int, num_tch: int,
-    field: dict[str, int]) -> None:
+def parse_message_csv(dv: FroreComm, outfile: str, num_bch: int, num_tch: int,
+    field: dict[str, int], message: list[list[int]]) -> None:
     """
     Parse one or more Event Trail messages in CSV format
     """
     global parse_count
-
+    c = dv.const
     etp_inv = invert_dict(c, 'ETP_')
     evc_inv = invert_dict(c, 'EVC_')
     erc_inv = invert_dict(c, 'ERC_')
@@ -358,16 +361,17 @@ def parse_message_csv(dv: FroreComm, c: dict[str, int], outfile: str,
 
     return
 
-def parse_message(dv: FroreComm, c: dict[str, int], outfile: str,
-    message: Optional[list[list[int]]], num_bch: int, num_tch: int) -> None:
+def parse_message(dv: FroreComm, outfile: str, num_bch: int, num_tch: int,
+    message: Optional[list[list[int]]]) -> None:
     """
     Parse one or more Event Trail messages in 3 different formats
     STM IDE memory dump format (space separated 32 bytes per row), JSON, CSV
     """
-    global parse_count
-
     if message == None:
         return
+
+    global parse_count
+    c = dv.const
 
     max_size = c['TRAIL_ADC_LOG_SIZE']
     fields = get_event_trail_fields(num_bch, num_tch, max_size)
@@ -376,25 +380,26 @@ def parse_message(dv: FroreComm, c: dict[str, int], outfile: str,
     outfile_json = '{}.json'.format(outfile)
     outfile_csv = '{}.csv'.format(outfile)
 
-    parse_message_mem(outfile_mem, message)
-    parse_message_json(dv, c, outfile_json, message, num_bch, num_tch)
-    parse_message_csv(dv, c, outfile_csv, message, num_bch, num_tch, fields)
+    #parse_message_mem(outfile_mem, message)
+    #parse_message_json(dv, outfile_json, num_bch, num_tch, message)
+    parse_message_csv(dv, outfile_csv, num_bch, num_tch, fields, message)
 
     parse_count += 1
 
-def read_event_trail(dv: FroreComm, c: dict[str, int], outfile: str,
-    num_bch: int, num_tch: int, num_bytes: int, dev_lock: Lock) -> None:
+def read_event_trail(dv: FroreComm, outfile: str, num_bch: int, num_tch: int,
+    num_bytes: int, dev_lock: Lock) -> None:
     """
     Read Event Trail messages until buffer is empty and print results
     """
     global trail_buffer
+    c = dv.const
 
     # check how many bytes to read
     with dev_lock:
         trail_left = dv.reg16_read(c['REG_EVENT_TRAIL_SIZE'])
 
     while trail_left > 0:
-        dv.info('Event Trail Left to Read: {} bytes'.format(trail_left))
+        dv.debug('Event Trail Left to Read: {} bytes'.format(trail_left))
         if trail_left < num_bytes:
             trail_read = trail_left
         else:
@@ -410,8 +415,5 @@ def read_event_trail(dv: FroreComm, c: dict[str, int], outfile: str,
             mblock.append(message)
             message, trail_buffer = get_message(trail_buffer)
         # parse messages
-        parse_message(dv, c, outfile, mblock, num_bch, num_tch)
+        parse_message(dv, outfile, num_bch, num_tch, mblock)
         trail_left -= trail_read
-
-
-

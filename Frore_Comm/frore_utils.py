@@ -14,31 +14,9 @@ import os
 import json
 import platform
 import logging
+from cryptography.fernet import Fernet
 from time import sleep
-from frore_comm import FroreComm
-
-# FIXME: redundant definitions in const.h
-SYS_PKG_DESCRIPTOR_SIZE =   32 # in double words (128 bytes, 1024 bits)
-SYS_PKG_TYPE_OFFSET =       0 # PKG_TYPE field offset
-SYS_PKG_TYPE_LENGTH =       1 # PKG_TYPE field length
-SYS_PKG_DEFAULT =           0x00000000 # PKGTYPE field default value
-SYS_PKG_BINTYPE_MASK =      0x000000FF # BINTYPE subfield mask
-SYS_PKG_BINTYPE_RAW =       0x00000001 # raw binary
-SYS_PKG_BINTYPE_ENC1 =      0x00000002 # encrypted binary (custom key)
-SYS_PKG_BINTYPE_ENC2 =      0x00000003 # encrypted binary (common key)
-SYS_PKG_VERIF_MASK =        0x0000FF00 # VERIF subfield
-SYS_PKG_VERIF_BYPASS =      0x00000000 # bypass
-SYS_PKG_VERIF_FLETCHER32 =  0x00000100 # 32-bit checksum
-SYS_PKG_ADDR_OFFSET =       1 # start address in FLASH
-SYS_PKG_ADDR_LENGTH =       1
-SYS_PKG_SIZE_OFFSET =       2 # attached binary size in bytes
-SYS_PKG_SIZE_LENGTH =       1
-SYS_PKG_RAWSIZE_OFFSET =    3 # raw binary size in bytes
-SYS_PKG_RAWSIZE_LENGTH =    1
-SYS_PKG_CHECKSUM_OFFSET =   4 # checksum appended to binary
-SYS_PKG_CHECKSUM_LENGTH =   1 # may change based on verification type
-SYS_PKG_RESERVED_OFFSET =   5 # reserved for future use
-SYS_PKG_RESERVED_LENGTH =   27
+import sys
 
 #### Generic utility functions ####
 
@@ -136,191 +114,101 @@ def invert_dict(data: dict[str, int], type: str) -> dict[int, str]:
             d |= {k: data[k]}
     return {v: k for k, v in d.items()}
 
-#### FroreComm utility functions ####
-
-def enter_mode(dv: FroreComm, mode: str) -> None:
-    c = dv.const
-    if dv != None:
-        dv.info('Entering {} mode'.format(mode.split('_')[-1]))
-        dv.reg16_write(c['REG_SYSTEM_MODE_NEXT'], c[mode])
-        if c[mode] == c['REGDEF_MODE_SLEEP']: return # skip mode check
-        curr_mode = -1
-        while curr_mode != c[mode]:
-            curr_mode = dv.reg16_read(c['REG_SYSTEM_MODE'])
-
-def run_test(dv: FroreComm, type: str) -> None:
-    c = dv.const
-    if dv != None:
-        dv.info('Running {} test'.format(type.split('_')[-1]))
-        dv.reg16_write(c['REG_TEST_TYPE'], c[type])
-        dv.reg16_write(c['REG_SYSTEM_MODE_NEXT'], c['REGDEF_MODE_TEST'])
-        curr_type = -1
-        while curr_type != c['REGDEF_TEST_IDLE']:
-            curr_type = dv.reg16_read(c['REG_TEST_TYPE'])
-
-def reflash_pkgfile(dv: FroreComm, infile: str) -> None:
-    # read from PKG file
-    if os.path.isfile(infile):
-        data = read_bin(infile)
-        if data is not None:
-            dv.info('Read from {} ({} bytes) ...'.format(infile, len(data)))
+def flatten_dict(data: [dict[str, dict[str, int]]]) -> dict[str, int]:
+    d = {}
+    for outer_key, inner_dict in data.items():
+        if isinstance(inner_dict, dict):
+            d.update(inner_dict)
         else:
-            dv.error('Invalid binary file')
+            d[outer_key] = inner_dict
+    return d
+
+def limit_string(data: str, size: int) -> str:
+    if len(data) > size:
+        d = data[:10] + '...' + data[-(size-10):]
     else:
-        dv.error('Binary file does not exist')
-    # get constant definitions
-    c = dv.const
-    header_size = 4*SYS_PKG_DESCRIPTOR_SIZE
-    type_offset = 4*SYS_PKG_TYPE_OFFSET
-    addr_offset = 4*SYS_PKG_ADDR_OFFSET
-    size_offset = 4*SYS_PKG_SIZE_OFFSET
-    rawsize_offset = 4*SYS_PKG_RAWSIZE_OFFSET
-    checksum_offset = 4*SYS_PKG_CHECKSUM_OFFSET
-    bintype_mask = SYS_PKG_BINTYPE_MASK
-    bintype_raw = SYS_PKG_BINTYPE_RAW
-    bintype_enc1 = SYS_PKG_BINTYPE_ENC1
-    verif_mask = SYS_PKG_VERIF_MASK
-    verif_bypass = SYS_PKG_VERIF_BYPASS
-    verif_fletcher32 = SYS_PKG_VERIF_FLETCHER32
-
-    while len(data):
-        # extract PKG info
-        header = data[:header_size] # extract header
-        pkg_type = byte_to_dword(header[type_offset:type_offset+4])[0]
-        bin_addr = byte_to_dword(header[addr_offset:addr_offset+4])[0]
-        bin_size = byte_to_dword(header[size_offset:size_offset+4])[0]
-        raw_size = byte_to_dword(header[rawsize_offset:rawsize_offset+4])[0]
-        checksum = byte_to_dword(header[checksum_offset:checksum_offset+4])[0]
-        bin_data = data[header_size:header_size+bin_size]
-        data = data[header_size+bin_size:]
-        dv.info('PKG Info: Header ({} bytes), Body ({} bytes)'
-            .format(len(header), len(bin_data)))
-
-        # binary type
-        bin_type = pkg_type & bintype_mask
-        if bin_type == bintype_raw:
-            # write data section
-            reflash_section(dv, bin_addr, bin_data, 'DATA')
-        elif bin_type == bintype_enc1:
-            # write program section
-            reflash_section(dv, bin_addr, bin_data, 'PROG')
-            # update OTD section
-            verif_type = pkg_type & verif_mask
-            bin_addr = c['FLASH_OTD_START_ADDR']
-            if verif_type == verif_fletcher32:
-                # write APP config
-                app_cfg = (pkg_type >> 8) & 0xFF
-                otd = [0] * c['FLASH_OTD_SIZE']
-                otd[0:4] = dword_to_byte([app_cfg])
-                otd[4:8] = dword_to_byte([c['FLASH_APP_START_ADDR']])
-                otd[8:12] = dword_to_byte([raw_size])
-                reflash_section(dv, bin_addr, otd, 'DATA')
-            else:
-                # indicate verification bypass
-                otd = [0xFF] * 256
-                reflash_section(dv, bin_addr, otd, 'DATA')
-
-def reflash_section(dv: FroreComm, addr: int, data: list[int],
-    type: str) -> None:
-    # get constant definitions
-    c = dv.const
-    page_size = c['FLASH_WRITE_PAGE_SIZE']
-    ram_addr = dv.reg32_read(c['REG_FLASH_COPY_ADDR'])
-    ram_size = c['COMM_MAX_RX_PAYLOAD_SIZE']
-
-    if len(data) < ram_size:
-        data += [0]*(ram_size-len(data))
-
-    # write FLASH data section
-    f_addr = addr
-    f_size = len(data)
-    f_cnt = 0
-    while f_size:
-        r_addr = ram_addr
-        r_size = min(f_size, page_size)
-        checksum = fletcher32(data[:r_size], r_size)
-        s_size = r_size
-        r_cnt = 0
-        while r_size:
-            b_size = min(r_size, ram_size)
-            dv.ram_write(r_addr, data[:b_size])
-            dv.info('Writing Section {} Block {} ({}) into RAM @0x{:08x} ...'
-                .format(f_cnt+1, r_cnt+1, b_size, r_addr))
-            data = data[b_size:]
-            r_addr += b_size
-            r_size -= b_size
-            r_cnt += 1
-        if type == 'PROG':
-            dv.flash_pwrite(f_addr, s_size, checksum)
-        elif type == 'DATA':
-            dv.flash_dwrite(f_addr, s_size, checksum)
-        dv.info('Writing Section {} ({}, 0x{:08x}) into FLASH @0x{:08x} ...'
-            .format(f_cnt+1, s_size, checksum, f_addr))
-        f_addr += s_size
-        f_size -= s_size
-        f_cnt += 1
+        d = data
+    return d
 
 def stm_cli_get_command() -> str:
-    build_os = platform.machine()
-    if build_os == 'AMD64':
+    build_os = sys.platform
+    cmd = ''
+    if build_os == 'win32':
         cmd = 'STM32_Programmer_CLI.exe'
-    elif build_os == 'arm64': # FIXME: not yet supported
-        cmd = 'ls'
+    elif build_os == 'linux':
+        cmd = 'STM32_Programmer_CLI'
+    elif build_os == 'darwin':
+        cmd = '/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI'
     return cmd
 
 def stm_cli_reset() -> None:
     cmd = stm_cli_get_command()
     command = f'{cmd} -c port=SWD reset=HWrst --start'
     os.system(command)
+    sleep(0.5)
 
 def stm_cli_erase_flash() -> None:
     cmd = stm_cli_get_command()
+    command = f'{cmd} -c port=SWD reset=HWrst --optionbytes RDP=0xAA nBOOT_SEL=0'
+    os.system(command)
+    sleep(0.5)
     command = f'{cmd} -c port=SWD -e all'
     os.system(command)
+    sleep(0.5)
 
 def stm_cli_unlock_flash() -> None:
     cmd = stm_cli_get_command()
-    command = f'{cmd} -c port=SWD reset=HWrst --optionbytes RDP=0xAA'
+    command = f'{cmd} -c port=SWD reset=HWrst --optionbytes RDP=0xAA nBOOT_SEL=0'
     os.system(command)
+    sleep(0.5)
 
 def stm_cli_lock_flash() -> None:
     cmd = stm_cli_get_command()
     command = f'{cmd} -c port=SWD reset=HWrst --optionbytes RDP=0xBB nBOOT_SEL=0'
     os.system(command)
+    sleep(0.5)
 
 def stm_cli_reflash_binfile(infile: str, addr: int) -> None:
     cmd = stm_cli_get_command()
     command = f'{cmd} -c port=SWD reset=HWrst -w {infile} {addr}'
     os.system(command)
+    sleep(0.5)
 
 def stm_cli_reflash_hexfile(infile: str) -> None:
     cmd = stm_cli_get_command()
     command = f'{cmd} -c port=SWD reset=HWrst -w {infile}'
     os.system(command)
+    sleep(0.5)
 
-def stm_cli_reflash_pkgfile(logger: logging.Logger, infile: str) -> None:
+def stm_cli_reflash_pkgfile(logger: logging.Logger, dev_const: dict[str, int], \
+    infile: str) -> None:
+    COMMON_KEY = b'AUmC0J8PViy_2taeWbcRy8dItIXwbmX6KWjxfbHKZHE='
     # read from PKG file
+    data = []
     if os.path.isfile(infile):
         data = read_bin(infile)
         if data is not None:
-            logger.info('Read from {} ({} bytes) ...'.format(infile, len(data)))
+            logger.info('Reading from {} ({} bytes) ...'.format(infile, len(data)))
         else:
             logger.error('Invalid binary file')
     else:
         logger.error('Binary file does not exist')
+
     # get constant definitions
-    header_size = 4*SYS_PKG_DESCRIPTOR_SIZE
-    type_offset = 4*SYS_PKG_TYPE_OFFSET
-    addr_offset = 4*SYS_PKG_ADDR_OFFSET
-    size_offset = 4*SYS_PKG_SIZE_OFFSET
-    rawsize_offset = 4*SYS_PKG_RAWSIZE_OFFSET
-    checksum_offset = 4*SYS_PKG_CHECKSUM_OFFSET
-    bintype_mask = SYS_PKG_BINTYPE_MASK
-    bintype_raw = SYS_PKG_BINTYPE_RAW
-    bintype_enc1 = SYS_PKG_BINTYPE_ENC1
-    verif_mask = SYS_PKG_VERIF_MASK
-    verif_bypass = SYS_PKG_VERIF_BYPASS
-    verif_fletcher32 = SYS_PKG_VERIF_FLETCHER32
+    c = dev_const
+    header_size = 4*c['SYS_PKG_DESCRIPTOR_SIZE']
+    type_offset = 4*c['SYS_PKG_TYPE_OFFSET']
+    addr_offset = 4*c['SYS_PKG_ADDR_OFFSET']
+    size_offset = 4*c['SYS_PKG_SIZE_OFFSET']
+    rawsize_offset = 4*c['SYS_PKG_RAWSIZE_OFFSET']
+    checksum_offset = 4*c['SYS_PKG_CHECKSUM_OFFSET']
+    bintype_mask = c['SYS_PKG_BINTYPE_MASK']
+    bintype_raw = c['SYS_PKG_BINTYPE_RAW']
+    bintype_enc1 = c['SYS_PKG_BINTYPE_ENC1']
+    bintype_enc2 = c['SYS_PKG_BINTYPE_ENC2']
+    verif_mask = c['SYS_PKG_VERIF_MASK']
+    verif_bypass = c['SYS_PKG_VERIF_BYPASS']
+    verif_fletcher32 = c['SYS_PKG_VERIF_FLETCHER32']
 
     while len(data):
         # extract PKG info
@@ -335,28 +223,43 @@ def stm_cli_reflash_pkgfile(logger: logging.Logger, infile: str) -> None:
         logger.info('PKG Info: Header ({} bytes), Body ({} bytes)'
             .format(len(header), len(bin_data)))
 
-        # binary type
-        bin_type = pkg_type & bintype_mask
-        if bin_type == bintype_raw:
-            if bin_data is not None:
-                tempfile = infile.split('.pkg')[0]
-                tempfile += '_0x{:08x}.bin'.format(bin_addr)
-                write_bin(tempfile, bin_data)
-                stm_cli_reflash_binfile(tempfile, bin_addr)
+        if bin_data is not None:
+            # create a temporary binary
+            tempfile = infile.split('.pkg')[0]
+            tempfile += '_0x{:08x}.bin'.format(bin_addr)
+            write_bin(tempfile, bin_data)
+            # decrypt file if necessary
+            bin_type = pkg_type & bintype_mask
+            if bin_type == bintype_enc2:
+                enc_data = read_bin(tempfile)
+                fer = Fernet(COMMON_KEY)
+                dec = fer.decrypt(bytes(enc_data))
+                dec_data = [x for x in bytearray(dec)]
+                write_bin(tempfile, dec_data)
+            # binary type
+            stm_cli_reflash_binfile(tempfile, bin_addr)
 
 if __name__ == '__main__':
 
-    data = read_bin('app.pkg')
-    block_byte = data[:16]
-
-    # test data type conversion
-    print_byte(block_byte, 0)
-
-    block_word = byte_to_word(block_byte)
-    print_word(block_word, 0)
-
-    block_dword = word_to_dword(block_word)
-    print_dword(block_dword, 0)
-
-    block_dword = byte_to_dword(block_byte)
-    print_dword(block_dword, 0)
+    data = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+            0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10]
+    # cksum = fletcher32(data, 16)
+    data = [1, *[0]*251] + [1, 2, 3, 4]
+    data = [0] * 16
+    print(list(data))
+    cksum = fletcher32(data, len(data))
+    print(cksum)
+    # data = read_bin('app.pkg')
+    # block_byte = data[:16]
+    #
+    # # test data type conversion
+    # print_byte(block_byte, 0)
+    #
+    # block_word = byte_to_word(block_byte)
+    # print_word(block_word, 0)
+    #
+    # block_dword = word_to_dword(block_word)
+    # print_dword(block_dword, 0)
+    #
+    # block_dword = byte_to_dword(block_byte)
+    # print_dword(block_dword, 0)
